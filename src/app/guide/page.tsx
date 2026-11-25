@@ -38,15 +38,15 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    id: "dashboard", icon: LayoutDashboard, title: "Telemetry dashboard (build your own)", href: "/dashboard",
-    what: "The same live and replay data as the Live page, laid out on a canvas you arrange yourself, like a real pit wall screen.",
+    id: "dashboard", icon: LayoutDashboard, title: "Canvas layout (build your own pit wall)", href: "/live?layout=canvas",
+    what: "Live and Pit Wall both have a Classic / Canvas switch at the top. Canvas lays the same panels out on a board you arrange yourself, like a real pit wall screen.",
     how: [
-      "Drag a panel by its title bar to move it anywhere; drag the bottom-right corner to resize it. Panels snap to a 10 px grid and can overlap.",
+      "Drag a panel by its title bar to move it anywhere; drag the bottom-right corner to resize it. Panels snap to a 10 px grid; a panel you drop onto others pushes them down instead of overlapping.",
       "Click a panel to bring it to the front. ✕ removes it, and + Add widget puts it back.",
       "Lock layout stops accidental moves while you watch; Reset layout restores the default arrangement.",
       "Keyboard: Tab to a title bar, then arrow keys move it and Shift+arrows resize it.",
     ],
-    tips: ["Your layout is saved in this browser, so it's there next time (each browser keeps its own)."],
+    tips: ["Your layout and your Classic / Canvas choice are saved in this browser, separately for Live and Pit Wall.", "Switching layouts on Live keeps the session and replay position."],
   },
   {
     id: "pitwall", icon: Gauge, title: "Pit Wall (lap comparison)", href: "/pit-wall",

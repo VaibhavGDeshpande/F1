@@ -1,13 +1,14 @@
 "use client";
-import { useEffect, useState } from "react";
-import { LayoutDashboard, Lock, Plus, RotateCcw, Unlock } from "lucide-react";
-import { pushApart } from "@/lib/layout";
+import { useState } from "react";
+import { Plus } from "lucide-react";
 import { BattlePanel } from "./BattlePanel";
-import { DashCanvas, type DashBox } from "./DashCanvas";
+import { LapCompare } from "./LapCompare";
+import { GapChart, PitStops, TyreDeg } from "./RaceBoard";
+import { CanvasFrame, CanvasToolbar, DashCanvas, useCanvasLayout, type DashBox } from "./DashCanvas";
 import { TimingLegend } from "./Legend";
 import { DriverTelemetry, FeedTrack, LiveControls, RaceControlList, RadioList, RunningOrder, Tower } from "./LivePanels";
 import { StrategyPanel } from "./StrategyPanel";
-import { fmtClock, STATUS_STYLE, useLiveFeed, type LiveFeed, type SessionOption } from "./useLiveFeed";
+import { fmtClock, STATUS_STYLE, type LiveFeed, type SessionOption } from "./useLiveFeed";
 
 const STORE = "pitwall:dashboard:v1";
 const BODY = 48; // header + padding inside a widget
@@ -23,10 +24,15 @@ const DEFAULT: DashBox[] = [
   { id: "battle", x: 0, y: 770, w: 540, h: 320, z: 1 },
   { id: "radio", x: 550, y: 770, w: 530, h: 320, z: 1 },
   { id: "strategy", x: 0, y: 1100, w: 1080, h: 420, z: 1 },
+  { id: "weather", x: 0, y: 1530, w: 540, h: 420, z: 1 },
+  { id: "compare", x: 550, y: 1530, w: 530, h: 620, z: 1 },
+  { id: "gaps", x: 0, y: 2160, w: 1080, h: 380, z: 1 },
+  { id: "tyredeg", x: 0, y: 2550, w: 540, h: 420, z: 1 },
+  { id: "pits", x: 550, y: 2550, w: 530, h: 420, z: 1 },
 ];
 const SIZES: Record<string, [number, number]> = {
   status: [300, 190], map: [480, 420], order: [280, 420], tower: [720, 520], telemetry: [540, 330], control: [530, 330],
-  battle: [540, 320], radio: [530, 320], strategy: [720, 420],
+  battle: [540, 320], radio: [530, 320], strategy: [720, 420], weather: [540, 420], compare: [640, 620], gaps: [1080, 380], tyredeg: [540, 420], pits: [530, 420],
 };
 
 function Status({ f }: { f: LiveFeed }) {
@@ -50,22 +56,34 @@ function Status({ f }: { f: LiveFeed }) {
   );
 }
 
-export function TelemetryDashboard({ sessions, liveKey }: { sessions: SessionOption[]; liveKey: number | null }) {
-  const f = useLiveFeed(sessions, liveKey);
-  const [boxes, setBoxes] = useState<DashBox[]>(DEFAULT);
+const MAPS = [["satellite", "Satellite"], ["radar", "Radar"], ["rain", "Rain"], ["clouds", "Clouds"], ["wind", "Wind"]] as const;
+
+/** Live weather map around the circuit (Windy embed: free, no key). Always shows *now*, not the replay time. */
+function WeatherMap({ f, height }: { f: LiveFeed; height: number }) {
+  const [overlay, setOverlay] = useState<(typeof MAPS)[number][0]>("satellite");
+  const { lat, lon } = f.circuit;
+  if (lat == null || lon == null) return <p className="muted text-sm">Waiting for the circuit location…</p>;
+  const q = new URLSearchParams({
+    lat: String(lat), lon: String(lon), detailLat: String(lat), detailLon: String(lon), zoom: "8", level: "surface", overlay,
+    product: overlay === "satellite" ? "satellite" : overlay === "radar" ? "radar" : "ecmwf", menu: "", message: "true", marker: "true",
+    calendar: "now", type: "map", location: "coordinates", metricWind: "km/h", metricTemp: "°C", radarRange: "-1",
+  });
+  return (
+    <div className="flex h-full flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-1">
+        {MAPS.map(([k, label]) => <button key={k} className={`chip ${overlay === k ? "chip-on" : ""}`} onClick={() => setOverlay(k)}>{label}</button>)}
+        {!f.isLive && <span className="muted ml-auto text-[11px]">Shows the weather now, not at the replay time</span>}
+      </div>
+      <iframe key={overlay} title="Weather map around the circuit" src={`https://embed.windy.com/embed2.html?${q}`} loading="lazy"
+        className="w-full rounded-lg border-0" style={{ height: Math.max(160, height) }} />
+    </div>
+  );
+}
+
+/** Canvas layout of the Live page: every panel can be dragged, resized, removed and added back. */
+export function TelemetryDashboard({ f, sessions }: { f: LiveFeed; sessions: SessionOption[] }) {
+  const { boxes, save } = useCanvasLayout(STORE, DEFAULT);
   const [locked, setLocked] = useState(false);
-  // saved layout loads after mount (localStorage isn't available during server rendering)
-  useEffect(() => {
-    try {
-      const s = localStorage.getItem(STORE);
-      if (!s) return;
-      const saved: DashBox[] = JSON.parse(s);
-      // layouts saved before panels pushed each other may overlap: settle them from the top down
-      const top = [...saved].sort((a, b) => a.y - b.y || a.x - b.x)[0];
-      setBoxes(top ? pushApart(saved, top.id) : saved);
-    } catch { /* storage blocked: keep default */ }
-  }, []);
-  const save = (b: DashBox[]) => { setBoxes(b); try { localStorage.setItem(STORE, JSON.stringify(b)); } catch { /* not saved */ } };
 
   const data = f.data;
   const widgets = {
@@ -83,37 +101,25 @@ export function TelemetryDashboard({ sessions, liveKey }: { sessions: SessionOpt
       title: "Battle", minW: 320, minH: 220,
       render: () => (data && f.session && data.tower.length > 1 ? <BattlePanel bare sessionKey={f.session.session_key} t={data.t} tower={data.tower} /> : <p className="muted text-sm">Waiting for timing data…</p>),
     },
+    gaps: { title: "Gap to leader", minW: 360, minH: 260, render: (b: DashBox) => <GapChart f={f} height={b.h - BODY - 70} /> },
+    tyredeg: { title: "Tyre wear (current stint)", minW: 320, minH: 220, render: () => <TyreDeg f={f} /> },
+    pits: { title: "Pit stops", minW: 300, minH: 200, render: () => <PitStops f={f} /> },
+    compare: { title: "Lap compare (telemetry)", minW: 380, minH: 300, render: () => <LapCompare f={f} /> },
+    weather: { title: "Weather map (satellite & radar)", minW: 300, minH: 260, render: (b: DashBox) => <WeatherMap f={f} height={b.h - BODY - 40} /> },
     strategy: {
       title: "Strategy", minW: 420, minH: 240,
       render: () => (data?.strategy ? <StrategyPanel bare s={data.strategy} tower={data.tower} /> : <p className="muted text-sm">Strategy appears during races and sprints.</p>),
     },
   };
-  const missing = Object.keys(widgets).filter((id) => !boxes.some((b) => b.id === id));
-  const add = (id: string) => {
-    const bottom = Math.max(0, ...boxes.map((b) => b.y + b.h));
-    const [w, h] = SIZES[id] ?? [400, 300];
-    save([...boxes, { id, x: 0, y: bottom + 10, w, h, z: Math.max(0, ...boxes.map((b) => b.z)) + 1 }]);
-  };
-
-  if (!f.session) return <p className="muted">No sessions yet this season.</p>;
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="mr-auto">
-          <h1 className="h1 flex items-center gap-3"><LayoutDashboard size={28} />Telemetry dashboard</h1>
-          <p className="muted text-sm">Build your own pit wall: drag panels by their title bar, resize from the bottom-right corner, add or remove panels. Your layout is saved in this browser.</p>
-        </div>
-        <select className="select" value="" aria-label="Add widget" disabled={!missing.length} onChange={(e) => e.target.value && add(e.target.value)}>
-          <option value="">{missing.length ? "+ Add widget…" : "All widgets on canvas"}</option>
-          {missing.map((id) => <option key={id} value={id}>{widgets[id as keyof typeof widgets].title}</option>)}
-        </select>
-        <button className={`pill flex items-center gap-1 ${locked ? "pill-on" : ""}`} onClick={() => setLocked((l) => !l)}>
-          {locked ? <Lock size={12} /> : <Unlock size={12} />}{locked ? "Locked" : "Lock layout"}
-        </button>
-        <button className="pill flex items-center gap-1" onClick={() => save(DEFAULT)}><RotateCcw size={12} />Reset layout</button>
-      </div>
-      <div className="card py-3"><LiveControls f={f} sessions={sessions} /></div>
-      <DashCanvas boxes={boxes} onChange={save} widgets={widgets} locked={locked} />
+      <CanvasFrame tools={<>
+        <p className="muted mr-auto text-sm">Drag panels by their title bar, resize from the bottom-right corner, add or remove panels. Your layout is saved in this browser.</p>
+        <CanvasToolbar boxes={boxes} save={save} initial={DEFAULT} widgets={widgets} sizes={SIZES} locked={locked} setLocked={setLocked} />
+      </>}>
+        <div className="card py-3"><LiveControls f={f} sessions={sessions} /></div>
+        <DashCanvas boxes={boxes} onChange={save} widgets={widgets} locked={locked} />
+      </CanvasFrame>
       <p className="muted flex items-center gap-1 text-[11px]"><Plus size={11} />Tip: focus a title bar with Tab, then use the arrow keys to move it and Shift+arrows to resize.</p>
     </div>
   );

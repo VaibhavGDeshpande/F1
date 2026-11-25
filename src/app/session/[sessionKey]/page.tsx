@@ -8,6 +8,7 @@ import { StintChart } from "@/components/StintChart";
 import { compoundSummary, fmtLap, neutralisedLaps, stintDegradation } from "@/lib/analysis";
 import { compoundColour, SAFE_SESSION, teamColour } from "@/lib/openf1";
 import { isRace, positionsByLap, sessionData } from "@/lib/session";
+import { Learn } from "@/components/Learn";
 
 export const revalidate = 60;
 
@@ -85,6 +86,7 @@ export default async function SessionPage({ params }: { params: Promise<{ sessio
         <section className="card lg:col-span-2">
           <h2 className="h2">Tyre strategy</h2>
           <p className="muted mb-2 text-xs">Each bar is one set of tyres; a new bar starts after a pit stop. Hover for laps and tyre age.</p>
+          <Learn className="mb-2" look="compare the drivers who finished ahead with those behind. Did they stop more or less often, or later?">A team chooses when to stop and on which tyre. Drivers gaining places often stopped at a different time from the cars around them.</Learn>
           <StintChart stints={stints} order={order} names={names} />
           <div className="mt-3"><TyreLegend /></div>
         </section>
@@ -93,6 +95,7 @@ export default async function SessionPage({ params }: { params: Promise<{ sessio
       {race && positions.length > 0 && (
         <section className="card">
           <h2 className="h2">Positions by lap</h2>
+          <Learn className="mb-2">A line moving up means the driver gained a place. Clusters of position changes at the same lap are usually pit stops or a safety car.</Learn>
           <LapLines data={positionsByLap(laps, positions)} reversed height={420}
             series={order.map((n) => ({ key: String(n), label: names[n], colour: teamColour(drivers.find((d) => d.driver_number === n)) }))} />
         </section>

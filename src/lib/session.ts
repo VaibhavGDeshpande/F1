@@ -1,5 +1,6 @@
 // Session-level data for analysis pages and API routes.
-import { compoundSummary, neutralisedLaps, stintDegradation, withDistance } from "./analysis";
+import { circuitInfo } from "./live";
+import { compoundSummary, fixFrozen, neutralisedLaps, stintDegradation, withDistance } from "./analysis";
 import {
   cacheFor, getSession, isFinished, openf1,
   type CarData, type Driver, type Lap, type Location, type Meeting, type Pit, type Position, type RaceControl, type Session, type Stint,
@@ -67,13 +68,14 @@ export async function lapTelemetry(sessionKey: string, driver: number, lapNumber
     "date>=": lap.date_start, "date<=": new Date(Date.parse(lap.date_start) + lap.lap_duration * 1000).toISOString(),
   };
   const keep = isFinished(session) ? 86400 : 60;
-  const [car, loc] = await Promise.all([openf1<CarData>("car_data", range, keep), openf1<Location>("location", range, keep)]);
+  const [car, loc, circuit] = await Promise.all([
+    openf1<CarData>("car_data", range, keep), openf1<Location>("location", range, keep),
+    circuitInfo(session).catch(() => null), // lap length, to repair laps where every feed froze
+  ]);
   const t0 = Date.parse(lap.date_start);
-  return {
-    lap,
-    points: withDistance(car, lap.date_start),
-    path: loc.filter((p) => p.x || p.y).map((p) => ({ x: p.x, y: p.y, z: p.z, t: (Date.parse(p.date) - t0) / 1000 })),
-  };
+  const path = loc.filter((p) => p.x || p.y).map((p) => ({ x: p.x, y: p.y, z: p.z, t: (Date.parse(p.date) - t0) / 1000 }));
+  const { points, frozen } = fixFrozen(withDistance(car, lap.date_start), path, circuit?.lapLength);
+  return { lap, points, path, frozen };
 }
 
 export async function meetingWithSessions(meetingKey: string) {

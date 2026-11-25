@@ -50,3 +50,17 @@ test("monte carlo: no safety cars matches the optimiser; safety cars make stops 
   assert.ok(chaotic.some((r) => r.scStopPct > 50), "most races offer a cheap stop");
   assert.ok(Math.abs(chaotic.reduce((s, r) => s + r.winPct, 0) - 100) < 1e-9);
 });
+
+test("strategy lab: plan time matches the optimiser, rule checks and cliff explanation", async () => {
+  const { planTime, planProblems, stintBreakdown } = await import("./racesim.ts");
+  const inp = { laps: 50, pitLoss: 21, pitLossSC: 12, scChance: 0.4, tyres: {
+    SOFT: { pace: 0, deg: 0.08, life: 15 }, MEDIUM: { pace: 0.3, deg: 0.05, life: 28 }, HARD: { pace: 0.6, deg: 0.03, life: 45 } } } as const;
+  const best = optimise(inp)[0];
+  assert.ok(Math.abs(planTime(inp, best.seq, best.stops) - best.time) < 1e-9);
+  assert.deepEqual(planProblems(inp, best.seq, best.stops), []);
+  assert.equal(planProblems(inp, ["MEDIUM", "MEDIUM"], [25]).length, 1); // one compound only
+  assert.equal(planProblems(inp, ["SOFT", "HARD"], [3]).length, 1); // stint too short
+  const b = stintBreakdown(inp, ["SOFT", "HARD"], [20]);
+  assert.equal(b[0].overLife, 4); // ages 16..19 are past a 15-lap life
+  assert.ok(b[0].cliff > 0 && b[1].cliff === 0);
+});

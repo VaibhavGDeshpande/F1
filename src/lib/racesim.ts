@@ -150,3 +150,32 @@ export function monteCarlo(inp: SimInput, strats: Strategy[], n = 3000, seed = 4
 }
 
 export const strategyName = (s: Pick<Strategy, "seq">) => s.seq.map((c) => c[0] + c.slice(1).toLowerCase()).join(" → ");
+
+/** Reasons a hand-made plan breaks the rules ([] = legal). Used by the strategy lab. */
+export function planProblems(inp: SimInput, seq: Compound[], stops: number[]): string[] {
+  const out: string[] = [];
+  if (new Set(seq).size < 2) out.push("Dry races require at least two different compounds.");
+  const edges = [0, ...stops, inp.laps];
+  for (let i = 1; i < edges.length; i++) {
+    const n = edges[i] - edges[i - 1];
+    if (n < MIN_STINT) out.push(`Stint ${i} is ${n} laps: each stint needs at least ${MIN_STINT}.`);
+    else if (inp.maxStint && n > inp.maxStint) out.push(`Stint ${i} is ${n} laps, over the ${inp.maxStint}-lap limit per set.`);
+  }
+  return out;
+}
+
+export type StintCost = { compound: Compound; from: number; to: number; laps: number; pace: number; wear: number; cliff: number; overLife: number };
+
+/** Where a plan spends its time, stint by stint (seconds vs a new fastest tyre). Stints + stops × pitLoss = race time. */
+export function stintBreakdown(inp: SimInput, seq: Compound[], stops: number[]): StintCost[] {
+  const edges = [0, ...stops, inp.laps];
+  return seq.map((c, i) => {
+    const t = inp.tyres[c], n = Math.max(0, edges[i + 1] - edges[i]), over = Math.max(0, n - 1 - t.life);
+    // cliff: ages life+1 … n-1 each cost CLIFF × (age − life) → CLIFF × over(over+1)/2
+    return { compound: c, from: edges[i] + 1, to: edges[i + 1], laps: n, pace: n * t.pace, wear: (t.deg * n * (n - 1)) / 2, cliff: (CLIFF * over * (over + 1)) / 2, overLife: over };
+  });
+}
+
+/** Race time of a hand-made plan with no safety car (same scale as Strategy.time). */
+export const planTime = (inp: SimInput, seq: Compound[], stops: number[]) =>
+  stintBreakdown(inp, seq, stops).reduce((t, s) => t + s.pace + s.wear + s.cliff, 0) + stops.length * inp.pitLoss;

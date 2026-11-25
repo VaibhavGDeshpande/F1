@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { deltaTrace, FUEL_EFFECT_S_PER_LAP, neutralisedLaps, stintDegradation, trailAt, withDistance } from "./analysis.ts";
+import { deltaTrace, fixFrozen, FUEL_EFFECT_S_PER_LAP, neutralisedLaps, stintDegradation, trailAt, withDistance } from "./analysis.ts";
 
 test("trailAt interpolates between samples and clamps outside them", () => {
   const tr: [number, number, number][] = [[1000, 0, 0], [2000, 100, 50], [3000, 100, 150]];
@@ -50,4 +50,26 @@ test("distance integration and lap delta", () => {
   const b = withDistance([car(0, 180), car(2, 180), car(4, 180)], new Date(0).toISOString()); // half the speed
   const delta = deltaTrace(a, b);
   assert.equal(delta.at(-1)!.delta, 2); // B is 2 s slower over the lap
+});
+
+test("fixFrozen: a frozen speed feed gets its distance from the GPS path", () => {
+  // car really drives 50 m/s for 10 s; the feed sticks at 20 m/s (72 km/h) from t=3 to t=7
+  const pts = Array.from({ length: 11 }, (_, t) => ({ t, d: 0, speed: t >= 3 && t <= 7 ? 72 : 180 + t, throttle: 100, brake: 0, gear: 7, rpm: t >= 3 && t <= 7 ? 9000 : 10000 + t }));
+  for (let i = 1; i < pts.length; i++) pts[i].d = pts[i - 1].d + ((pts[i - 1].speed + pts[i].speed) / 2 / 3.6);
+  const path = Array.from({ length: 11 }, (_, t) => ({ t, x: t * 500, y: 0 })); // 50 m per second, in decimetres
+  const { points, frozen } = fixFrozen(pts, path);
+  assert.ok(frozen >= 4);
+  assert.ok(Math.abs(points.at(-1)!.d - pts.at(-1)!.d) > 50); // distance corrected upwards
+  assert.ok(points.at(-1)!.d > 490 && points.at(-1)!.d < 520, `got ${points.at(-1)!.d}`);
+  const healthy = fixFrozen(pts.map((p) => ({ ...p, rpm: p.rpm + p.t })), path); // nothing frozen: untouched
+  assert.equal(healthy.frozen, 0);
+});
+
+test("fixFrozen: when the GPS froze too, the lap length fills the gap", () => {
+  const pts = Array.from({ length: 11 }, (_, t) => ({ t, d: 0, speed: t >= 3 && t <= 7 ? 72 : 180, throttle: 100, brake: 0, gear: 7, rpm: t >= 3 && t <= 7 ? 9000 : 10000 + t }));
+  for (let i = 1; i < pts.length; i++) pts[i].d = pts[i - 1].d + ((pts[i - 1].speed + pts[i].speed) / 2 / 3.6);
+  const path = Array.from({ length: 11 }, (_, t) => ({ t, x: (t <= 3 ? t : t >= 8 ? t - 5 : 3) * 500, y: 0 })); // GPS stuck from 3 to 8
+  const { points } = fixFrozen(pts, path, 500);
+  assert.ok(Math.abs(points.at(-1)!.d - 500) < 1, `got ${points.at(-1)!.d}`);
+  for (let i = 1; i < points.length; i++) assert.ok(points[i].d >= points[i - 1].d); // never goes backwards
 });

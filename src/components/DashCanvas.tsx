@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, X } from "lucide-react";
+import { GripVertical, Lock, Maximize2, Minimize2, RotateCcw, Unlock, X } from "lucide-react";
 import { pushApart } from "@/lib/layout";
+import { useFullSize } from "./useFullSize";
 
 export type DashBox = { id: string; x: number; y: number; w: number; h: number; z: number };
 type Widget = { title: string; minW: number; minH: number; render: (box: DashBox) => React.ReactNode };
@@ -92,7 +93,7 @@ export function DashCanvas({ boxes, onChange, widgets, locked }: {
         const wd = widgets[b.id];
         return (
           <section key={b.id} aria-label={wd.title} onPointerDown={() => toFront(b.id)}
-            className={`absolute flex flex-col overflow-hidden rounded-xl border bg-[#111113] shadow-2xl ${active === b.id ? "border-red-500/70" : "border-neutral-800"}`}
+            className={`absolute flex flex-col overflow-hidden rounded-xl border has-[[data-fullsize]]:!z-[70] bg-[#111113] shadow-2xl ${active === b.id ? "border-red-500/70" : "border-neutral-800"}`}
             style={{ left: b.x, top: b.y, width: b.w, height: b.h, zIndex: b.z }}>
             <header tabIndex={0} onPointerDown={(e) => start(e, b, "move")} onKeyDown={(e) => key(e, b)}
               title={locked ? wd.title : "Drag to move · arrow keys to move · Shift+arrows to resize"}
@@ -117,5 +118,63 @@ export function DashCanvas({ boxes, onChange, widgets, locked }: {
       })}
       {!shown.length && <p className="muted absolute inset-0 grid place-items-center text-sm">The canvas is empty. Use “Add widget” above.</p>}
     </div>
+  );
+}
+
+/** Canvas layout saved per browser under `key`; layouts saved before panels pushed each other are settled on load. */
+export function useCanvasLayout(key: string, initial: DashBox[]) {
+  const [boxes, setBoxes] = useState<DashBox[]>(initial);
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem(key);
+      if (!s) return;
+      const saved: DashBox[] = JSON.parse(s);
+      const top = [...saved].sort((a, b) => a.y - b.y || a.x - b.x)[0];
+      setBoxes(top ? pushApart(saved, top.id) : saved);
+    } catch { /* storage blocked: keep default */ }
+  }, [key]);
+  const save = (b: DashBox[]) => { setBoxes(b); try { localStorage.setItem(key, JSON.stringify(b)); } catch { /* not saved */ } };
+  return { boxes, save };
+}
+
+/** Toolbar + canvas that can fill the whole screen; `bar` (e.g. the replay controls) is shown only in full screen. */
+export function CanvasFrame({ tools, bar, children }: { tools: React.ReactNode; bar?: React.ReactNode; children: React.ReactNode }) {
+  const fs = useFullSize<HTMLDivElement>();
+  return (
+    <div ref={fs.ref} className={fs.full ? "fixed inset-0 z-[80] space-y-3 overflow-auto bg-[#08080a] p-3" : "space-y-3"}>
+      <div className="flex flex-wrap items-center gap-2">
+        {tools}
+        <button className={`pill flex items-center gap-1 ${fs.full ? "pill-on" : ""}`} onClick={fs.toggle} title={fs.full ? "Esc also exits" : "Fill the screen with the canvas"}>
+          {fs.full ? <Minimize2 size={12} /> : <Maximize2 size={12} />}{fs.full ? "Exit full screen" : "Full screen"}
+        </button>
+      </div>
+      {fs.full && bar}
+      {children}
+    </div>
+  );
+}
+
+/** Add widget / lock / reset controls for a canvas. */
+export function CanvasToolbar({ boxes, save, initial, widgets, sizes, locked, setLocked }: {
+  boxes: DashBox[]; save: (b: DashBox[]) => void; initial: DashBox[]; widgets: Record<string, { title: string }>;
+  sizes: Record<string, [number, number]>; locked: boolean; setLocked: (f: (l: boolean) => boolean) => void;
+}) {
+  const missing = Object.keys(widgets).filter((id) => !boxes.some((b) => b.id === id));
+  const add = (id: string) => {
+    const bottom = Math.max(0, ...boxes.map((b) => b.y + b.h));
+    const [w, h] = sizes[id] ?? [400, 300];
+    save([...boxes, { id, x: 0, y: bottom + 10, w, h, z: Math.max(0, ...boxes.map((b) => b.z)) + 1 }]);
+  };
+  return (
+    <>
+      <select className="select" value="" aria-label="Add widget" disabled={!missing.length} onChange={(e) => e.target.value && add(e.target.value)}>
+        <option value="">{missing.length ? "+ Add widget…" : "All widgets on canvas"}</option>
+        {missing.map((id) => <option key={id} value={id}>{widgets[id].title}</option>)}
+      </select>
+      <button className={`pill flex items-center gap-1 ${locked ? "pill-on" : ""}`} onClick={() => setLocked((l) => !l)}>
+        {locked ? <Lock size={12} /> : <Unlock size={12} />}{locked ? "Locked" : "Lock layout"}
+      </button>
+      <button className="pill flex items-center gap-1" onClick={() => save(initial)}><RotateCcw size={12} />Reset layout</button>
+    </>
   );
 }

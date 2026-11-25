@@ -86,7 +86,7 @@ export type Clip = { startD: number; endD: number; from: number; to: number; sec
  */
 export function clippingEvents(pts: TelPoint[], minSpeed = 200, minDrop = 3, minSamples = 3): Clip[] {
   const out: Clip[] = [];
-  const full = (p: TelPoint) => p.throttle >= 98 && !p.brake;
+  const full = (p: TelPoint) => p.throttle >= 98 && !p.brake && !p.stale; // a frozen feed looks flat, not like clipping
   let s = -1;
   const close = (e: number) => {
     if (s >= 0 && e - s + 1 >= minSamples && pts[s].speed - pts[e].speed >= minDrop) {

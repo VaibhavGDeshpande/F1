@@ -1,9 +1,6 @@
-import { TelemetryDashboard } from "@/components/TelemetryDashboard";
-import { liveSessions } from "@/lib/live-sessions";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Telemetry dashboard" };
-
-export default async function Dashboard() {
-  const { options, liveKey } = await liveSessions();
-  return <TelemetryDashboard sessions={options} liveKey={liveKey} />;
+// the canvas dashboard is now a layout of the Live page; keep old links and bookmarks working
+export default function Dashboard() {
+  redirect("/live?layout=canvas");
 }

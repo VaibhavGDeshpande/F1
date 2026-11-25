@@ -55,7 +55,8 @@ export default async function PitWallPage({ searchParams }: { searchParams: Prom
   const drivers: PWDriver[] = driverRows
     .map((d) => ({
       n: d.driver_number, code: d.name_acronym, name: d.full_name, team: d.team_name, colour: teamColour(d), headshot: d.headshot_url,
-      laps: laps.filter((l) => l.driver_number === d.driver_number && l.lap_duration && !l.is_pit_out_lap).map((l) => ({ lap: l.lap_number, time: l.lap_duration! })),
+      laps: laps.filter((l) => l.driver_number === d.driver_number && l.lap_duration).sort((a, b) => a.lap_number - b.lap_number)
+        .map((l) => ({ lap: l.lap_number, time: l.lap_duration!, out: l.is_pit_out_lap || undefined })),
     }))
     .sort((a, b) => Math.min(Infinity, ...a.laps.map((l) => l.time)) - Math.min(Infinity, ...b.laps.map((l) => l.time)));
 

@@ -1,4 +1,5 @@
 "use client";
+import { Learn } from "./Learn";
 import { Swords } from "lucide-react";
 import type { LiveState, TowerRow } from "@/lib/live";
 import { compoundColour } from "@/lib/openf1";
@@ -19,6 +20,10 @@ export function StrategyPanel({ s, tower, bare = false }: { s: NonNullable<LiveS
         </span>
       </div>
 
+      <Learn look="watch a driver on old tyres with a car close behind on newer ones. If the chaser pits first and sets fast out-laps, that's an undercut in progress.">
+        <b>Undercut:</b> pitting first and using the grip of new tyres to gain time while the rival is still on worn ones. <b>Overcut:</b> staying out longer, which works
+        when new tyres take time to warm up or the track ahead is clear. Gaps smaller than the pit stop loss mean a stop drops the driver behind that car.
+      </Learn>
       {threats.length > 0 && (
         <ul className="grid gap-1.5 text-sm sm:grid-cols-2">
           {threats.map((t) => (

@@ -6,25 +6,11 @@ import { compoundColour } from "@/lib/openf1";
 import { CLIFF, COMPOUNDS, monteCarlo, optimise, strategyName, type Compound, type SimInput, type SimResult } from "@/lib/racesim";
 import type { SimDefaults } from "@/lib/racesim-data";
 import { TelemetryChart } from "./Charts";
+import { Learn } from "./Learn";
+import { StintBar, StrategyLab } from "./StrategyLab";
 
 const RUNS = 3000;
 const RUNS_TEXT = "3,000"; // fixed text: toLocaleString differs between server and browser locales (hydration mismatch)
-
-function StintBar({ r, laps }: { r: SimResult; laps: number }) {
-  const edges = [0, ...r.stops, laps];
-  return (
-    <div className="relative flex h-3 w-full overflow-hidden rounded bg-neutral-900">
-      {r.seq.map((c, i) => (
-        <div key={i} className="h-full border-r border-black/70 last:border-0" title={`${c.toLowerCase()} · laps ${edges[i] + 1}–${edges[i + 1]}`}
-          style={{ width: `${((edges[i + 1] - edges[i]) / laps) * 100}%`, background: compoundColour(c) }} />
-      ))}
-      {/* pit windows */}
-      {r.window.map(([a, b], i) => (
-        <div key={`w${i}`} className="absolute inset-y-0 border-x border-white/80 bg-white/15" style={{ left: `${(a / laps) * 100}%`, width: `${(Math.max(1, b - a) / laps) * 100}%` }} />
-      ))}
-    </div>
-  );
-}
 
 function Num({ label, value, onChange, step = 1, min = 0, max, suffix, hint }: {
   label: string; value: number; onChange: (v: number) => void; step?: number; min?: number; max?: number; suffix?: string; hint?: string;
@@ -47,12 +33,8 @@ export function RaceSim({ defaults, meetings, meetingKey, title }: {
   const router = useRouter();
   const [inp, setInp] = useState<SimInput>(defaults.input);
   const deferred = useDeferredValue(inp); // typing stays smooth while the 3,000 races re-run
-  const results = useMemo(() => {
-    const laps = Math.round(deferred.laps);
-    if (laps < 15 || laps > 90) return [];
-    const safe = { ...deferred, laps };
-    return monteCarlo(safe, optimise(safe).slice(0, 8), RUNS);
-  }, [deferred]);
+  const safe = useMemo(() => ({ ...deferred, laps: Math.round(deferred.laps) }), [deferred]);
+  const results = useMemo(() => (safe.laps < 15 || safe.laps > 90 ? [] : monteCarlo(safe, optimise(safe).slice(0, 8), RUNS)), [safe]);
   const set = (patch: Partial<SimInput>) => setInp((x) => ({ ...x, ...patch }));
   const setTyre = (c: Compound, k: "pace" | "deg" | "life", v: number) => setInp((x) => ({ ...x, tyres: { ...x.tyres, [c]: { ...x.tyres[c], [k]: v } } }));
   const best = results[0], laps = Math.round(inp.laps);
@@ -109,6 +91,10 @@ export function RaceSim({ defaults, meetings, meetingKey, title }: {
             <h2 className="h2 mb-0 mr-auto">Inputs</h2>
             <button className="pill flex items-center gap-1" onClick={() => setInp(defaults.input)}><RotateCcw size={12} />Reset to data</button>
           </div>
+          <Learn look="change one number at a time and see what happens to the best plan at the top.">
+            These numbers come from this season&apos;s real data for this circuit. <b>Pit stop loss</b> is the time lost driving through the pit lane compared with staying out.
+            A high loss (a long pit lane) favours fewer stops. <b>Pace</b>, <b>wear</b> and <b>life</b> describe each tyre.
+          </Learn>
           <div className="grid grid-cols-2 gap-3">
             <Num label="Race laps" value={inp.laps} onChange={(v) => set({ laps: v })} min={15} max={90} hint={defaults.sources.laps} />
             <Num label="Safety car chance" value={inp.scChance * 100} onChange={(v) => set({ scChance: Math.min(99, Math.max(0, v)) / 100 })} max={99} suffix="%" hint={defaults.sources.sc} />
@@ -143,6 +129,10 @@ export function RaceSim({ defaults, meetings, meetingKey, title }: {
         <div className="space-y-4">
           <section className={`card transition-opacity ${stale ? "opacity-60" : ""}`}>
             <h2 className="h2">Strategies ranked</h2>
+            <Learn className="mb-3" look="raise the safety car chance to 80% and watch the Likely range and Fastest in columns: with more safety cars, luck decides more of the race.">
+              <b>Avg vs best</b> is the average race time gap. <b>Likely range</b> shows how much luck matters: a wide range means safety cars can make or break the plan.
+              <b> Fastest in</b> counts how often a plan wins outright. The white box on each bar is the <b>pit window</b>: stopping anywhere inside it costs under 1 s.
+            </Learn>
             {results.length === 0 ? <p className="muted text-sm">Race laps must be between 15 and 90.</p> : (
               <div className="overflow-x-auto">
                 <table className="tbl text-sm">
@@ -181,8 +171,13 @@ export function RaceSim({ defaults, meetings, meetingKey, title }: {
             )}
           </section>
 
+          {results.length > 0 && <StrategyLab inp={safe} best={best} runs={RUNS} />}
+
           <section className="card">
             <h2 className="h2">Lap time by tyre age</h2>
+            <Learn className="mb-2" look="make the soft's life 10 laps shorter in the inputs. Its curve bends earlier, and the best plan stops sooner or switches to a harder tyre.">
+              Softer tyres start faster but wear quicker. Where two curves cross, the harder tyre becomes the faster one: that crossing is roughly when a team wants to stop.
+            </Learn>
             <p className="muted mb-2 text-xs">How much slower each compound is than a new soft as it wears. The steep bend at the end is the cliff, after the usable life.</p>
             <TelemetryChart xLabel="laps old" unit="s" height={200} lines={curves} />
           </section>

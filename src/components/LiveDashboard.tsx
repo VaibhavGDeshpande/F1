@@ -1,30 +1,56 @@
 "use client";
-import { LayoutDashboard, Maximize2, Minimize2 } from "lucide-react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { LayoutDashboard, LayoutList, Maximize2, Minimize2 } from "lucide-react";
 import { BattlePanel } from "./BattlePanel";
 import { TimingLegend } from "./Legend";
 import { DriverTelemetry, FeedTrack, LiveControls, RaceControlList, RadioList, RunningOrder, Tower } from "./LivePanels";
 import { Countdown, LocalTime } from "./LocalTime";
 import { StrategyPanel } from "./StrategyPanel";
 import { useFullSize } from "./useFullSize";
-import { fmtClock, STATUS_STYLE, useLiveFeed, type SessionOption } from "./useLiveFeed";
+import { TelemetryDashboard } from "./TelemetryDashboard";
+import { fmtClock, STATUS_STYLE, useLiveFeed, type LiveFeed, type SessionOption } from "./useLiveFeed";
 
 export type { SessionOption } from "./useLiveFeed";
 
-export function LiveDashboard({ sessions, liveKey, next }: {
-  sessions: SessionOption[]; liveKey: number | null; next: { label: string; date_start: string } | null;
+type Layout = "classic" | "canvas";
+const LAYOUT_KEY = "pitwall:live-layout";
+
+/** The Live page: one live feed, shown either as the classic page or as the drag-and-resize canvas. */
+export function LiveView({ sessions, liveKey, next, initialLayout }: {
+  sessions: SessionOption[]; liveKey: number | null; next: { label: string; date_start: string } | null; initialLayout?: Layout;
 }) {
   const f = useLiveFeed(sessions, liveKey);
-  const { ref: mapRef, full, toggle: toggleFull } = useFullSize<HTMLElement>();
+  const [layout, setLayoutState] = useState<Layout>(initialLayout ?? "classic");
+  useEffect(() => {
+    if (initialLayout) return; // a link asked for a layout
+    try { if (localStorage.getItem(LAYOUT_KEY) === "canvas") setLayoutState("canvas"); } catch { /* storage blocked */ }
+  }, [initialLayout]);
+  const setLayout = (v: Layout) => { setLayoutState(v); try { localStorage.setItem(LAYOUT_KEY, v); } catch { /* not saved */ } };
   if (!f.session) return <p className="muted">No sessions yet this season.</p>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex rounded-xl bg-neutral-950 p-1 sm:w-fit">
+        {(["classic", "canvas"] as const).map((v) => (
+          <button key={v} className={`pill flex items-center gap-1 ${layout === v ? "!bg-white !text-black" : "bg-transparent"}`} onClick={() => setLayout(v)}>
+            {v === "classic" ? <><LayoutList size={12} />Classic layout</> : <><LayoutDashboard size={12} />Canvas (drag &amp; resize)</>}
+          </button>
+        ))}
+      </div>
+      {layout === "canvas" ? <TelemetryDashboard f={f} sessions={sessions} /> : <LiveDashboard f={f} sessions={sessions} liveKey={liveKey} next={next} />}
+    </div>
+  );
+}
+
+function LiveDashboard({ f, sessions, liveKey, next }: {
+  f: LiveFeed; sessions: SessionOption[]; liveKey: number | null; next: { label: string; date_start: string } | null;
+}) {
+  const { ref: mapRef, full, toggle: toggleFull } = useFullSize<HTMLElement>();
   const { data } = f;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1"><LiveControls f={f} sessions={sessions} /></div>
-        <Link href="/dashboard" className="pill flex shrink-0 items-center gap-1"><LayoutDashboard size={12} />Custom dashboard</Link>
-      </div>
+      <LiveControls f={f} sessions={sessions} />
       {!liveKey && next && (
         <p className="muted text-sm">Next live session: <b>{next.label}</b> in <Countdown iso={next.date_start} /> (<LocalTime iso={next.date_start} />). Until then, replay any past session.</p>
       )}
@@ -66,10 +92,10 @@ export function LiveDashboard({ sessions, liveKey, next }: {
       {data?.strategy && (
         <div className="grid gap-4 xl:grid-cols-5">
           <div className="xl:col-span-3"><StrategyPanel s={data.strategy} tower={data.tower} /></div>
-          <div className="xl:col-span-2"><BattlePanel sessionKey={f.session.session_key} t={data.t} tower={data.tower} /></div>
+          <div className="xl:col-span-2"><BattlePanel sessionKey={f.session!.session_key} t={data.t} tower={data.tower} /></div>
         </div>
       )}
-      {data && !data.strategy && data.tower.length > 1 && <BattlePanel sessionKey={f.session.session_key} t={data.t} tower={data.tower} />}
+      {data && !data.strategy && data.tower.length > 1 && <BattlePanel sessionKey={f.session!.session_key} t={data.t} tower={data.tower} />}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card"><h2 className="h2">Race control</h2><RaceControlList f={f} /></section>

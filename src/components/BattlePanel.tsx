@@ -1,4 +1,5 @@
 "use client";
+import { Learn } from "./Learn";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, Crosshair } from "lucide-react";
 import type { TowerRow } from "@/lib/live";
@@ -62,6 +63,10 @@ export function BattlePanel({ sessionKey, t, tower, bare = false }: { sessionKey
           <ArrowLeftRight size={14} />
         </button>
         {select(1)}
+        <Learn className="w-full" look="pick two cars about a second apart and see whether the trend line is falling (chaser closing) or flat (stuck behind).">
+          The gap over the last laps shows who is faster right now. Within 1 s the chaser can use overtake mode (extra battery energy) on the straights. Closing on a car and passing are different
+          things: following closely in dirty air wears the chaser&apos;s tyres faster.
+        </Learn>
       </div>
       {a && b && last ? (
         <>

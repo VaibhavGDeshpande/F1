@@ -28,6 +28,10 @@ export function LiveControls({ f, sessions, slider = true }: { f: LiveFeed; sess
         )}
         {f.data && <span className={`rounded px-2 py-0.5 text-xs font-bold ${STATUS_STYLE[f.data.status] ?? "bg-neutral-700"}`}>{f.data.status}</span>}
         <span className="font-mono text-sm">{fmtClock(f.elapsed)}</span>
+        <button className={`chip ${f.autoRadio ? "chip-on" : ""}`} aria-pressed={f.autoRadio} onClick={() => f.setAutoRadio(!f.autoRadio)}
+          title="New team radio always pops up bottom-right; with this on it also plays by itself">
+          {f.autoRadio ? "🔊 Auto-play radio" : "🔇 Auto-play radio"}
+        </button>
         {f.data?.weather && (
           <span className="muted text-xs">
             Air {f.data.weather.air_temperature.toFixed(1)}° · Track {f.data.weather.track_temperature.toFixed(1)}° · Hum {f.data.weather.humidity.toFixed(0)}% · Wind {f.data.weather.wind_speed.toFixed(1)} m/s

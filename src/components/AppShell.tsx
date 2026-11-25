@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Box, CalendarDays, LayoutDashboard, FlaskConical, Gauge, House, Newspaper, Radio, ScrollText, Trophy, User, Users } from "lucide-react";
+import { BookOpen, Box, CalendarDays, FlaskConical, Gauge, House, Newspaper, Radio, ScrollText, Trophy, User, Users } from "lucide-react";
 import { useEffect } from "react";
+import { LearnToggle } from "./Learn";
 import { LocalTime } from "./LocalTime";
 import { toast, Toaster } from "./Toaster";
 
@@ -49,7 +50,6 @@ function useStewardsToasts() {
 const NAV = [
   { href: "/", label: "Home", icon: House },
   { href: "/live", label: "Live", icon: Radio },
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/pit-wall", label: "Pit Wall", icon: Gauge },
   { href: "/race-sim", label: "Race Sim", icon: FlaskConical },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
@@ -97,6 +97,7 @@ export function AppShell({ next, children }: { next: { name: string; session: st
               <span className="text-neutral-400">{next.session}, <LocalTime iso={next.date} /></span>
             </span>
           )}
+          <span className="ml-auto"><LearnToggle /></span>
         </header>
         {/* phone / tablet nav */}
         <nav className="flex gap-1 overflow-x-auto lg:hidden">

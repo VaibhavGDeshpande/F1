@@ -89,7 +89,7 @@ export function compoundSummary(degs: StintDeg[]): CompoundSummary[] {
   }));
 }
 
-export type TelPoint = { t: number; d: number; speed: number; throttle: number; brake: number; gear: number; rpm: number };
+export type TelPoint = { t: number; d: number; speed: number; throttle: number; brake: number; gear: number; rpm: number; stale?: boolean }; // stale = frozen feed
 
 /** Car data samples → points with time since lap start (s) and distance (m, integrated from speed). */
 export function withDistance(car: CarData[], lapStart: string): TelPoint[] {
@@ -99,6 +99,49 @@ export function withDistance(car: CarData[], lapStart: string): TelPoint[] {
     if (i > 0) d += (((car[i - 1].speed + c.speed) / 2) / 3.6) * ((Date.parse(c.date) - Date.parse(car[i - 1].date)) / 1000);
     return { t: (Date.parse(c.date) - t0) / 1000, d, speed: c.speed, throttle: c.throttle, brake: c.brake > 0 ? 100 : 0, gear: c.n_gear, rpm: c.rpm };
   });
+}
+
+/**
+ * OpenF1's car feed sometimes freezes: the same speed/rpm/gear/throttle repeats for seconds while the car keeps moving.
+ * Integrating a frozen speed puts every later corner at the wrong distance, so over frozen stretches (1 s or longer) take the
+ * progress from the GPS path instead (calibrated against the healthy parts of the lap). If the GPS froze too and the lap comes
+ * out more than 3% off `lapLength`, the missing metres are spread over the frozen time. Returns the frozen seconds too.
+ */
+export function fixFrozen(points: TelPoint[], path: { x: number; y: number; t: number }[], lapLength?: number): { points: TelPoint[]; frozen: number } {
+  if (points.length < 3 || path.length < 2) return { points, frozen: 0 };
+  const cum = [0]; // GPS progress in metres (location is in decimetres)
+  for (let i = 1; i < path.length; i++) cum.push(cum[i - 1] + Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y) / 10);
+  let j = 0;
+  const gps = (t: number) => { // samples come in time order, so walk forward
+    while (j < path.length - 2 && path[j + 1].t < t) j++;
+    const a = path[j], b = path[j + 1], f = b.t > a.t ? Math.min(1, Math.max(0, (t - a.t) / (b.t - a.t))) : 0;
+    return cum[j] + (cum[j + 1] - cum[j]) * f;
+  };
+  const g = points.map((p) => gps(p.t));
+  const same = (a: TelPoint, b: TelPoint) => a.speed === b.speed && a.rpm === b.rpm && a.gear === b.gear && a.throttle === b.throttle;
+  const bad = new Array<boolean>(points.length).fill(false); // bad[i]: the step from i-1 to i is untrustworthy
+  for (let s = 0, i = 1; i <= points.length; i++) {
+    if (i < points.length && same(points[i], points[i - 1])) continue;
+    // the steps into and out of a frozen run use the stale value too
+    if (points[i - 1].t - points[s].t >= 1) for (let k = Math.max(1, s); k <= Math.min(i, points.length - 1); k++) bad[k] = true;
+    s = i;
+  }
+  let speedSum = 0, gpsSum = 0, frozen = 0;
+  for (let i = 1; i < points.length; i++) {
+    if (bad[i]) frozen += points[i].t - points[i - 1].t;
+    else { speedSum += points[i].d - points[i - 1].d; gpsSum += g[i] - g[i - 1]; }
+  }
+  if (!frozen) return { points, frozen: 0 };
+  const k = gpsSum > 0 ? speedSum / gpsSum : 1;
+  const inc = points.map((p, i) => (!i ? 0 : bad[i] ? k * (g[i] - g[i - 1]) : p.d - points[i - 1].d));
+  // the GPS feed can freeze at the same time (no progress at all): then share the lap's missing metres out over the frozen time
+  const total = inc.reduce((a, b) => a + b, 0);
+  if (lapLength && Math.abs(total - lapLength) > 0.03 * lapLength) {
+    const extra = lapLength - total;
+    for (let i = 1; i < points.length; i++) if (bad[i]) inc[i] = Math.max(0, inc[i] + (extra * (points[i].t - points[i - 1].t)) / frozen);
+  }
+  let d = 0;
+  return { points: points.map((p, i) => ({ ...p, d: (d += inc[i]), ...(bad[i] || bad[i + 1] ? { stale: true } : {}) })), frozen };
 }
 
 /** Time delta of lap B vs lap A along A's distance (positive = B slower). B's distance is scaled to A's length. */

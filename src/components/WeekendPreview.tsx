@@ -1,3 +1,4 @@
+import { Learn } from "./Learn";
 import { Gauge, History, Timer, TrendingUp, Trophy } from "lucide-react";
 import { fmtLap } from "@/lib/analysis";
 import { teamLogo } from "@/lib/media";
@@ -50,6 +51,10 @@ export async function WeekendPreview({ meeting, sessions }: { meeting: Meeting; 
         <a href={`/race-sim?meeting=${meeting.meeting_key}`} className="pill pill-on">Simulate race strategies →</a>
       </div>
 
+      <Learn look="note which team you think will win, then check the result after the race. Which part of your reasoning was right?">
+        Circuits suit different cars. Long straights reward low drag and engine power; lots of slow corners reward traction and mechanical grip; fast sweeping corners reward
+        downforce. Hot track temperatures make tyres overheat, so teams that are kind to their tyres do better there.
+      </Learn>
       {pr ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">

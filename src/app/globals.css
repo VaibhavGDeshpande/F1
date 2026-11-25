@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+@theme {
+  --font-display: var(--font-barlow), "Arial Narrow", sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: #08080a;
+  color: #ededed;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-neutral-800 bg-[#111113] p-4;
+  }
+  .h1 {
+    @apply font-display text-4xl font-bold uppercase tracking-wide;
+  }
+  .h2 {
+    @apply mb-3 flex items-center gap-2 text-sm font-semibold;
+  }
+  .pill {
+    @apply rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800;
+  }
+  .pill-on {
+    @apply bg-red-600 text-white hover:bg-red-600;
+  }
+  .select {
+    @apply rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm;
+  }
+  .tbl {
+    @apply w-full text-left text-sm;
+  }
+  .tbl th {
+    @apply border-b border-neutral-800 px-2 py-1.5 font-medium text-neutral-400;
+  }
+  .tbl td {
+    @apply border-b border-neutral-900 px-2 py-1.5;
+  }
+  .link {
+    @apply text-red-400 hover:text-red-300 hover:underline;
+  }
+  .chip {
+    @apply rounded-full border border-neutral-700 px-3 py-1 text-xs hover:border-neutral-500;
+  }
+  .chip-on {
+    @apply border-red-500 bg-red-500/10 text-red-300;
+  }
+  .muted {
+    @apply text-neutral-400;
+  }
+}

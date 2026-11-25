@@ -73,8 +73,8 @@ export function AppShell({ next, children }: { next: { name: string; session: st
     <div className="mx-auto flex min-h-screen max-w-[1600px] gap-4 p-3 lg:p-4">
       <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-56 shrink-0 flex-col rounded-2xl border border-neutral-800 bg-[#111113] p-3 lg:flex">
         <Link href="/" className="mb-6 flex items-center gap-2 px-2 pt-1">
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-red-600 text-xs font-black">PW</span>
-          <span className="font-display text-xl font-bold tracking-wide">PIT WALL</span>
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-red-600 text-xs font-black">SS</span>
+          <span className="font-display text-xl font-bold tracking-wide">SLIPSTREAM</span>
         </Link>
         <nav className="space-y-1">
           {NAV.map(({ href, label, icon: Icon }) => (

@@ -151,7 +151,7 @@ export default function Guide() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="h1 flex items-center gap-3"><BookOpen size={30} />How to use Pit Wall</h1>
+        <h1 className="h1 flex items-center gap-3"><BookOpen size={30} />How to use Slipstream</h1>
         <p className="muted max-w-3xl text-sm">
           A quick tour of every page: what it shows, how to use it and what the numbers mean. Use the sidebar on the left (or the row of
           buttons at the top on a phone) to move between pages.

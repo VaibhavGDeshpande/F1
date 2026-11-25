@@ -11,7 +11,7 @@ const sans = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { default: "Pit Wall — F1 data & live timing", template: "%s · Pit Wall" },
+  title: { default: "Slipstream — F1 data & live timing", template: "%s · Slipstream" },
   description: "Unofficial F1 analysis: live timing, telemetry, tyre degradation, news, penalties and power unit usage.",
 };
 

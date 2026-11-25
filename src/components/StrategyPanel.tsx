@@ -4,13 +4,13 @@ import type { LiveState, TowerRow } from "@/lib/live";
 import { compoundColour } from "@/lib/openf1";
 
 /** "If they pit now…" table, pit windows and undercut/overcut threats (races and sprints only). */
-export function StrategyPanel({ s, tower }: { s: NonNullable<LiveState["strategy"]>; tower: TowerRow[] }) {
+export function StrategyPanel({ s, tower, bare = false }: { s: NonNullable<LiveState["strategy"]>; tower: TowerRow[]; bare?: boolean }) {
   const colour = (code: string) => tower.find((r) => r.acronym === code)?.colour ?? "#888";
   const threats = [...s.threats].sort((a, b) => b.gain - b.interval - (a.gain - a.interval)).slice(0, 6);
   const tag = (code: string) => <b style={{ color: colour(code) }}>{code}</b>;
 
   return (
-    <section className="card space-y-3">
+    <section className={bare ? "space-y-3" : "card space-y-3"}>
       <div className="flex flex-wrap items-baseline gap-x-3">
         <h2 className="h2 mb-0"><Swords size={14} />Strategy</h2>
         <span className="muted text-xs">

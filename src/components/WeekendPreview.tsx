@@ -45,7 +45,10 @@ export async function WeekendPreview({ meeting, sessions }: { meeting: Meeting; 
 
   return (
     <section id="preview" className="card space-y-5">
-      <h2 className="h2 text-base"><TrendingUp size={16} />Weekend preview</h2>
+      <div className="flex items-center">
+        <h2 className="h2 mb-0 mr-auto text-base"><TrendingUp size={16} />Weekend preview</h2>
+        <a href={`/race-sim?meeting=${meeting.meeting_key}`} className="pill pill-on">Simulate race strategies →</a>
+      </div>
 
       {pr ? (
         <div className="space-y-3">

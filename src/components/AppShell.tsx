@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Gauge, House, Newspaper, Radio, ScrollText, Trophy, User, Users } from "lucide-react";
+import { BookOpen, Box, CalendarDays, LayoutDashboard, FlaskConical, Gauge, House, Newspaper, Radio, ScrollText, Trophy, User, Users } from "lucide-react";
 import { useEffect } from "react";
 import { LocalTime } from "./LocalTime";
 import { toast, Toaster } from "./Toaster";
@@ -49,13 +49,17 @@ function useStewardsToasts() {
 const NAV = [
   { href: "/", label: "Home", icon: House },
   { href: "/live", label: "Live", icon: Radio },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/pit-wall", label: "Pit Wall", icon: Gauge },
+  { href: "/race-sim", label: "Race Sim", icon: FlaskConical },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/standings", label: "Standings", icon: Trophy },
   { href: "/drivers", label: "Drivers", icon: User },
   { href: "/teams", label: "Teams", icon: Users },
+  { href: "/cars", label: "3D Cars", icon: Box },
   { href: "/news", label: "News", icon: Newspaper },
   { href: "/paddock", label: "Paddock", icon: ScrollText },
+  { href: "/guide", label: "Guide", icon: BookOpen },
 ];
 
 const isActive = (path: string, href: string) => (href === "/" ? path === "/" : path.startsWith(href));

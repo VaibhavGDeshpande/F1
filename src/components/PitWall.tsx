@@ -1,8 +1,11 @@
 "use client";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, Check, Gauge, Layers, Link2, MapPin, Maximize2, Minimize2, Pause, Play, RotateCcw, Timer } from "lucide-react";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Activity, BatteryWarning, Check, CornerDownRight, Gauge, Layers, Link2, MapPin, Maximize2, Minimize2, Pause, Play, RotateCcw, Timer } from "lucide-react";
+import { CartesianGrid, Line, LineChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { clippingEvents, cornerAnalysis } from "@/lib/corner-analysis";
+import { ClippingPanel } from "./ClippingPanel";
+import { CornerTable } from "./CornerTable";
 import { deltaTrace, fmtLap, lapModel, type TelPoint } from "@/lib/analysis";
 import type { Corner } from "@/lib/live";
 import { Track3D } from "./Track3D";
@@ -103,6 +106,23 @@ export function PitWall(p: Props) {
   );
   const lapSeries = useMemo(() => active.map((a) => ({ code: a.d.code, colour: a.colour, laps: a.d.laps, picked: a.lap })), [active]);
   const sectors = useMemo(() => (loaded.length > 1 ? miniSectors(loaded.map((a) => ({ tel: a.tel!, colour: a.colour }))) : undefined), [active]); // eslint-disable-line react-hooks/exhaustive-deps
+  // corner-by-corner (reference driver first) and energy clipping per driver; recomputed only when laps change
+  const cornerOrder = useMemo(() => (refA?.tel ? [refA, ...loaded.filter((a) => a !== refA)] : []), [active]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cornerRows = useMemo(
+    () => (cornerOrder.length && circuit.corners.length ? cornerAnalysis(cornerOrder.map((a) => a.tel!.points), cornerOrder[0].tel!.path, circuit.corners) : []),
+    [cornerOrder, circuit.corners],
+  );
+  const cornerWho = cornerOrder.map((a) => ({ code: a.d.code, colour: a.colour }));
+  const clipRows = useMemo(() => cornerOrder.map((a) => {
+    const refLength = cornerOrder[0].tel!.points.at(-1)?.d ?? 1;
+    const pts = a.tel!.points, scale = refLength / (pts.at(-1)?.d || 1);
+    return {
+      code: a.d.code, colour: a.colour,
+      // label each clip by the last corner before it (corner distances are on the reference lap's scale)
+      clips: clippingEvents(pts).map((c) => ({ ...c, after: [...cornerRows].reverse().find((r) => r.d < c.startD * scale)?.label ?? null })),
+    };
+  }), [cornerOrder, cornerRows]);
+  const clipAreas = useMemo(() => clipRows.flatMap((r) => r.clips.map((c) => ({ x1: c.startD, x2: c.endD, colour: r.colour }))), [clipRows]);
   // stable between play-head ticks, so the 3D scene isn't rebuilt 10×/s
   const model = useMemo(() => (refA?.tel ? lapModel(refA.tel.points, refA.tel.path) : []), [refA?.tel]);
   const maxT = Math.max(0, ...loaded.map((a) => a.tel!.points.at(-1)?.t ?? 0));
@@ -299,7 +319,7 @@ export function PitWall(p: Props) {
             </div>
             {loaded.length === 0 ? <p className="muted py-10 text-center text-sm">Loading telemetry…</p> : (
               <div className="relative">
-                <Traces shown={traces} deltas={deltas} refCode={refA?.d.code ?? ""} maxD={refLen} />
+                <Traces shown={traces} deltas={deltas} refCode={refA?.d.code ?? ""} maxD={refLen} clipAreas={clipAreas} />
                 <div className="pointer-events-none absolute inset-y-0 w-px bg-white/70" style={{ left: `calc(40px + (100% - 48px) * ${cursor})` }} />
               </div>
             )}
@@ -315,6 +335,19 @@ export function PitWall(p: Props) {
           </section>
         </div>
       </div>
+
+      {loaded.length > 0 && (
+        <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <section className="card">
+            <h2 className="h2"><CornerDownRight size={14} />Corner by corner</h2>
+            <CornerTable rows={cornerRows} who={cornerWho} />
+          </section>
+          <section className="card">
+            <h2 className="h2"><BatteryWarning size={14} />Energy clipping</h2>
+            <ClippingPanel rows={clipRows} />
+          </section>
+        </div>
+      )}
     </div>
   );
 }
@@ -378,8 +411,11 @@ const CHANNELS = [
 ] as const;
 
 /** Stacked distance-based traces. Memoised so the moving play-head cursor doesn't re-render the charts. */
-const Traces = memo(function Traces({ shown, deltas, refCode, maxD }: { shown: TraceLine[]; deltas: { code: string; colour: string; data: { d: number; delta: number }[] }[]; refCode: string; maxD: number }) {
-  const chart = (label: string, h: number, lines: { name: string; colour: string; data: { x: number; y: number }[] }[], opts: { domain?: readonly [number, number]; step?: boolean; last?: boolean } = {}) => (
+const Traces = memo(function Traces({ shown, deltas, refCode, maxD, clipAreas = [] }: {
+  shown: TraceLine[]; deltas: { code: string; colour: string; data: { d: number; delta: number }[] }[]; refCode: string; maxD: number;
+  clipAreas?: { x1: number; x2: number; colour: string }[]; // energy clipping zones, shaded on the speed trace
+}) {
+  const chart = (label: string, h: number, lines: { name: string; colour: string; data: { x: number; y: number }[] }[], opts: { domain?: readonly [number, number]; step?: boolean; last?: boolean; areas?: typeof clipAreas } = {}) => (
     <div key={label}>
       <div className="text-[10px] font-semibold text-neutral-400">{label}</div>
       <ResponsiveContainer width="100%" height={h + (opts.last ? 18 : 0)}>
@@ -388,6 +424,7 @@ const Traces = memo(function Traces({ shown, deltas, refCode, maxD }: { shown: T
           <XAxis type="number" dataKey="x" domain={[0, maxD]} allowDataOverflow hide={!opts.last} stroke="#555" fontSize={10} tickFormatter={(v: number) => `${Math.round(v)}m`} />
           <YAxis width={40} stroke="#555" fontSize={10} domain={opts.domain ? [...opts.domain] : ["auto", "auto"]} tickCount={3} />
           <Tooltip {...tooltip} labelFormatter={(l) => `${Math.round(Number(l))} m`} formatter={(v) => Number(v).toFixed(label.startsWith("Δ") ? 3 : 0)} />
+          {opts.areas?.map((a, k) => <ReferenceArea key={k} x1={a.x1} x2={a.x2} fill={a.colour} fillOpacity={0.18} stroke={a.colour} strokeOpacity={0.4} ifOverflow="hidden" />)}
           {lines.map((l) => (
             <Line key={l.name} data={l.data} dataKey="y" name={l.name} stroke={l.colour} dot={false} strokeWidth={1.4} isAnimationActive={false} type={opts.step ? "stepAfter" : "linear"} />
           ))}
@@ -400,7 +437,7 @@ const Traces = memo(function Traces({ shown, deltas, refCode, maxD }: { shown: T
       {deltas.length > 0 && chart(`Δ vs ${refCode} (s, + = slower)`, 90, deltas.map((d) => ({ name: d.code, colour: d.colour, data: d.data.map((p) => ({ x: p.d, y: p.delta })) })))}
       {CHANNELS.map((c, i) =>
         chart(c.label, c.h, shown.map((s) => ({ name: s.code, colour: s.colour, data: s.points.map((p) => ({ x: p.d, y: p[c.key] })) })),
-          { domain: "domain" in c ? c.domain : undefined, step: "step" in c, last: i === CHANNELS.length - 1 }),
+          { domain: "domain" in c ? c.domain : undefined, step: "step" in c, last: i === CHANNELS.length - 1, areas: c.key === "speed" ? clipAreas : undefined }),
       )}
     </div>
   );

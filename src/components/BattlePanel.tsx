@@ -7,7 +7,7 @@ import { TelemetryChart } from "./Charts";
 import { toast } from "./Toaster";
 
 /** Gap between two chosen drivers, lap by lap, with a toast when the one behind gets within a second. */
-export function BattlePanel({ sessionKey, t, tower }: { sessionKey: number; t: string; tower: TowerRow[] }) {
+export function BattlePanel({ sessionKey, t, tower, bare = false }: { sessionKey: number; t: string; tower: TowerRow[]; bare?: boolean }) {
   const [pair, setPair] = useState<[number, number] | null>(null);
   const [gaps, setGaps] = useState<{ lap: number; gap: number }[]>([]);
   const toasted = useRef<string>("");
@@ -54,7 +54,7 @@ export function BattlePanel({ sessionKey, t, tower }: { sessionKey: number; t: s
   );
 
   return (
-    <section className="card space-y-2">
+    <section className={bare ? "space-y-2" : "card space-y-2"}>
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="h2 mb-0 mr-2"><Crosshair size={14} />Battle</h2>
         {select(0)}

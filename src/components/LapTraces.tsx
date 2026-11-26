@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { TelPoint } from "@/lib/analysis";
+import { xTitle } from "./Charts";
 
 export const tooltip = { contentStyle: { background: "#0b0b0d", border: "1px solid #333", fontSize: 11 }, labelStyle: { color: "#999" } };
 export type TraceLine = { code: string; colour: string; points: TelPoint[] };
@@ -22,10 +23,11 @@ export const Traces = memo(function Traces({ shown, deltas, refCode, maxD, clipA
   const chart = (label: string, h: number, lines: { name: string; colour: string; data: { x: number; y: number }[] }[], opts: { domain?: readonly [number, number]; step?: boolean; last?: boolean; areas?: typeof clipAreas } = {}) => (
     <div key={label}>
       <div className="text-[10px] font-semibold text-neutral-400">{label}</div>
-      <ResponsiveContainer width="100%" height={h + (opts.last ? 18 : 0)}>
+      <ResponsiveContainer width="100%" height={h + (opts.last ? 32 : 0)}>
         <LineChart syncId="pitwall" margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
           <CartesianGrid stroke="#1d1d1f" vertical={false} />
-          <XAxis type="number" dataKey="x" domain={[0, maxD]} allowDataOverflow hide={!opts.last} stroke="#555" fontSize={10} tickFormatter={(v: number) => `${Math.round(v)}m`} />
+          <XAxis type="number" dataKey="x" domain={[0, maxD]} allowDataOverflow hide={!opts.last} stroke="#555" fontSize={10} tickFormatter={(v: number) => `${Math.round(v)}m`}
+            height={32} label={xTitle("Distance round the lap (m)")} />
           <YAxis width={40} stroke="#555" fontSize={10} domain={opts.domain ? [...opts.domain] : ["auto", "auto"]} tickCount={3} />
           <Tooltip {...tooltip} labelFormatter={(l) => `${Math.round(Number(l))} m`} formatter={(v) => Number(v).toFixed(label.startsWith("Δ") ? 3 : 0)} />
           {opts.areas?.map((a, k) => <ReferenceArea key={k} x1={a.x1} x2={a.x2} fill={a.colour} fillOpacity={0.18} stroke={a.colour} strokeOpacity={0.4} ifOverflow="hidden" />)}

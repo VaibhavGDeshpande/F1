@@ -5,6 +5,9 @@ import { compoundColour } from "@/lib/openf1";
 
 const tooltip = { contentStyle: { background: "#111", border: "1px solid #333", fontSize: 12 }, labelStyle: { color: "#aaa" } };
 const axis = { stroke: "#666", fontSize: 11 };
+// axis titles shared by every chart; give the XAxis height ≈ 32 and the YAxis ~14 px extra width to make room
+export const xTitle = (value: string) => ({ value, position: "insideBottom" as const, offset: 0, fill: "#8a8a8a", fontSize: 10 });
+export const yTitle = (value: string) => ({ value, angle: -90, position: "insideLeft" as const, offset: 4, fill: "#8a8a8a", fontSize: 10, style: { textAnchor: "middle" as const } });
 
 export type Series = { key: string; label: string; colour: string };
 
@@ -16,9 +19,10 @@ export function LapLines({ data, series, reversed, lapTimes, height = 320 }: {
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
         <CartesianGrid stroke="#222" />
-        <XAxis dataKey="lap" {...axis} />
+        <XAxis dataKey="lap" {...axis} height={32} label={xTitle("Lap")} />
         <YAxis {...axis} reversed={reversed} domain={lapTimes ? ["dataMin - 0.5", "dataMax + 0.5"] : [1, "dataMax"]} allowDecimals={!!lapTimes}
-          tickFormatter={(v: number) => (lapTimes ? fmtLap(v) : String(v))} width={lapTimes ? 64 : 32} interval={reversed ? 0 : undefined} />
+          tickFormatter={(v: number) => (lapTimes ? fmtLap(v) : String(v))} width={lapTimes ? 78 : 46} interval={reversed ? 0 : undefined}
+          label={yTitle(lapTimes ? "Lap time" : "Position")} />
         <Tooltip {...tooltip} formatter={(v) => (lapTimes ? fmtLap(Number(v)) : String(v))} labelFormatter={(l) => `Lap ${l}`} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         {series.map((s) => <Line key={s.key} dataKey={s.key} name={s.label} stroke={s.colour} dot={false} strokeWidth={1.5} connectNulls isAnimationActive={false} />)}
@@ -34,8 +38,9 @@ export function DegScatter({ stints, names }: { stints: StintDeg[]; names: Recor
     <ResponsiveContainer width="100%" height={320}>
       <ScatterChart margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
         <CartesianGrid stroke="#222" />
-        <XAxis type="number" dataKey="age" name="Tyre age" {...axis} label={{ value: "tyre age (laps)", position: "insideBottom", fill: "#666", fontSize: 11 }} />
-        <YAxis type="number" dataKey="time" name="Lap" {...axis} domain={["dataMin - 0.3", "dataMax + 0.3"]} tickFormatter={fmtLap} width={64} />
+        <XAxis type="number" dataKey="age" name="Tyre age" {...axis} height={32} label={xTitle("Tyre age (laps)")} />
+        <YAxis type="number" dataKey="time" name="Lap" {...axis} domain={["dataMin - 0.3", "dataMax + 0.3"]} tickFormatter={fmtLap} width={78}
+          label={yTitle("Lap time (fuel-corrected)")} />
         <Tooltip {...tooltip} formatter={(v, n) => (n === "Lap" ? fmtLap(Number(v)) : String(v))} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         {compounds.map((c) => (
@@ -48,17 +53,18 @@ export function DegScatter({ stints, names }: { stints: StintDeg[]; names: Recor
 }
 
 /** Generic numeric-x telemetry chart; each line can carry its own data array. */
-export function TelemetryChart({ lines, xLabel, yDomain, height = 220, unit = "" }: {
+export function TelemetryChart({ lines, xLabel, xTitle: xt, yTitle: yt, yDomain, height = 220, unit = "" }: {
   lines: { name: string; colour: string; data: { x: number; y: number }[]; dashed?: boolean }[];
-  xLabel: string; yDomain?: [number | string, number | string]; height?: number; unit?: string;
+  /** xLabel: unit used in the tooltip ("lap", "s"); xTitle / yTitle: what each axis means */
+  xLabel: string; xTitle: string; yTitle: string; yDomain?: [number | string, number | string]; height?: number; unit?: string;
 }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
         <CartesianGrid stroke="#222" />
         <XAxis type="number" dataKey="x" domain={["dataMin", "dataMax"]} {...axis} tickFormatter={(v: number) => v.toFixed(0)}
-          label={{ value: xLabel, position: "insideBottomRight", fill: "#666", fontSize: 11 }} allowDuplicatedCategory={false} />
-        <YAxis {...axis} domain={yDomain ?? ["auto", "auto"]} width={44} />
+          height={32} label={xTitle(xt)} allowDuplicatedCategory={false} />
+        <YAxis {...axis} domain={yDomain ?? ["auto", "auto"]} width={58} label={yTitle(yt)} />
         <Tooltip {...tooltip} formatter={(v) => `${Number(v).toFixed(unit === "s" ? 3 : 0)}${unit}`} labelFormatter={(l) => `${Number(l).toFixed(0)} ${xLabel}`} />
         {lines.map((l) => (
           <Line key={l.name} data={l.data} dataKey="y" name={l.name} stroke={l.colour} dot={false} strokeWidth={1.5}

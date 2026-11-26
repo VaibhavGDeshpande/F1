@@ -19,6 +19,15 @@ export function StintChart({ stints, order, names }: { stints: Stint[]; order: n
           </div>
         </div>
       ))}
+      {/* lap scale under the bars */}
+      <div className="flex items-start gap-2 pt-0.5 text-[10px] text-neutral-500">
+        <span className="w-10 shrink-0">Lap →</span>
+        <div className="relative h-3 flex-1">
+          {[...new Set([1, ...[0.25, 0.5, 0.75].map((f) => Math.round(total * f)), total])].map((lap) => (
+            <span key={lap} className="absolute -translate-x-1/2 font-mono" style={{ left: `${((lap - 0.5) / total) * 100}%` }}>{lap}</span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

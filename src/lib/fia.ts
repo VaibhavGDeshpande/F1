@@ -4,6 +4,8 @@ import {
   parseDecision, parseDocList, parseEventList, parseParcFerme, parsePuTable,
   type Decision, type FiaDoc, type ParcFermeChange, type PuRow,
 } from "./fia-parse";
+import { teamSlug } from "./media";
+import { parseCarPresentation, type PdfItem, type TeamUpgrades } from "./upgrades-parse";
 
 const BASE = "https://www.fia.com";
 // shortcut: season page ids are hand-copied from fia.com; add the 2027 id when that season's page appears.
@@ -100,3 +102,42 @@ export async function latestPuUsage(): Promise<{ event: string; rows: PuRow[]; d
 }
 
 export const fiaUrl = (path: string) => BASE + path;
+
+export type EventUpgrades = { eventId: string; event: string; doc: FiaDoc; teams: (TeamUpgrades & { slug: string | null })[] };
+
+/** Positioned text of every page; these PDFs carry part photos (up to ~3.5 MB), too big for Next's 2 MB fetch cache. */
+async function pdfItems(path: string): Promise<PdfItem[][]> {
+  if (!path.startsWith("/system/files/decision-document/")) throw new Error("Not an FIA decision document");
+  const res = await fetch(BASE + path, { headers: UA, cache: "no-store" });
+  if (!res.ok) throw new Error(`FIA ${res.status} for ${path}`);
+  const pdf = await getDocumentProxy(new Uint8Array(await res.arrayBuffer()));
+  const pages: PdfItem[][] = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const { items } = await (await pdf.getPage(p)).getTextContent();
+    pages.push(items.flatMap((i) => ("str" in i ? [{ x: i.transform[4], y: i.transform[5], w: i.width, str: i.str }] : [])));
+  }
+  return pages;
+}
+
+// shortcut: in-memory per server process (a past event's document never changes; the latest is re-read hourly).
+// A serverless deployment re-parses on each cold start (~20 PDFs); move to a persistent cache if that gets slow.
+const upgradeMemo = new Map<string, { at: number; data: Promise<EventUpgrades | null> }>();
+
+/** Every component each team declared as updated this season, one entry per event, newest event first. */
+export async function seasonUpgrades(): Promise<EventUpgrades[]> {
+  const events = await getEvents();
+  const load = async (e: { id: string; name: string }): Promise<EventUpgrades | null> => {
+    const doc = (await getDocuments(e.id)).find((d) => d.kind === "upgrades");
+    if (!doc) return null;
+    const teams = parseCarPresentation(await pdfItems(doc.path)).map((t) => ({ ...t, slug: teamSlug(t.team) }));
+    return { eventId: e.id, event: e.name, doc, teams };
+  };
+  const res = await inBatches(events, 3, (e) => {
+    const hit = upgradeMemo.get(e.id), fresh = hit && (e !== events[0] || Date.now() - hit.at < 3600_000);
+    if (fresh) return hit.data;
+    const data = load(e).catch((err) => { console.error("upgrades", e.name, err); upgradeMemo.delete(e.id); return null; });
+    upgradeMemo.set(e.id, { at: Date.now(), data });
+    return data;
+  });
+  return res.filter((r): r is EventUpgrades => r != null);
+}

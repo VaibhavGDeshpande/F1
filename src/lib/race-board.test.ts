@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { gapsToLeader, pitStops } from "./race-board.ts";
+import { aeroEfficiency, gapsToLeader, pitStops } from "./race-board.ts";
 import type { Lap, Pit, Stint } from "./openf1.ts";
 
 const T0 = Date.parse("2026-11-22T04:00:00Z");
@@ -25,4 +25,11 @@ test("pit stops pair with the stints either side, newest first", () => {
   const rows = pitStops(pits, stints);
   assert.deepEqual(rows.map((r) => [r.lap, r.off, r.on]), [[30, "HARD", "SOFT"], [15, "MEDIUM", "HARD"]]);
   assert.equal(pitStops(pits, stints, Date.parse("2026-11-22T04:45:00Z")).length, 1);
+});
+
+test("aero efficiency: best speed trap and best lap, skipping lap 1 and out-laps", () => {
+  const l = (n: number, lapNo: number, dur: number, st: number, out = false) =>
+    ({ driver_number: n, lap_number: lapNo, date_start: "2026-11-22T04:00:00Z", lap_duration: dur, st_speed: st, is_pit_out_lap: out }) as Lap;
+  const rows = aeroEfficiency([l(1, 1, 80, 360), l(1, 2, 92, 340), l(1, 3, 91, 345), l(1, 4, 90, 370, true), l(2, 2, 93, 350)]);
+  assert.deepEqual(rows.map((r) => [r.driver_number, r.top, r.best]), [[1, 345, 91], [2, 350, 93]]);
 });

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { bad, fail } from "@/lib/api";
 import { neutralisedLaps, stintDegradation } from "@/lib/analysis";
 import { cacheFor, getSession, openf1, SAFE_SESSION, type Lap, type Pit, type RaceControl, type Stint } from "@/lib/openf1";
-import { gapsToLeader, pitStops } from "@/lib/race-board";
+import { aeroEfficiency, gapsToLeader, pitStops } from "@/lib/race-board";
 
 /** GET /api/race-board?session_key=&t=<ISO, optional> → gap to leader per lap, current-stint tyre wear, pit stops (all as of t). */
 export async function GET(req: NextRequest) {
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({ gaps: gapsToLeader(laps), tyres, pits: pitStops(pits, allStints, until) }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ gaps: gapsToLeader(laps), tyres, aero: aeroEfficiency(laps), pits: pitStops(pits, allStints, until) }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return fail(e);
   }

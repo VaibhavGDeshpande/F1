@@ -16,7 +16,7 @@ export type Driver = {
 export type Lap = {
   driver_number: number; lap_number: number; date_start: string | null; lap_duration: number | null;
   duration_sector_1: number | null; duration_sector_2: number | null; duration_sector_3: number | null;
-  is_pit_out_lap: boolean; st_speed: number | null;
+  is_pit_out_lap: boolean; st_speed: number | null; i1_speed?: number | null; i2_speed?: number | null;
 };
 export type Stint = { driver_number: number; stint_number: number; lap_start: number; lap_end: number; compound: string | null; tyre_age_at_start: number | null };
 export type Position = { date: string; driver_number: number; position: number };

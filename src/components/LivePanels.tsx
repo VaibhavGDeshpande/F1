@@ -98,8 +98,8 @@ export function DriverTelemetry({ f, height = 270 }: { f: LiveFeed; height?: num
   return (
     <div>
       <div className="text-xs font-semibold" style={{ color: sel.colour }}>{sel.acronym} · last 40 s</div>
-      <TelemetryChart xLabel="s" height={Math.round(height * 0.58)} lines={[{ name: "speed", colour: sel.colour, data: t.map((p) => ({ x: p.t, y: p.speed })) }]} />
-      <TelemetryChart xLabel="s" height={Math.round(height * 0.42)} yDomain={[0, 100]} lines={[
+      <TelemetryChart xLabel="s" xTitle="Time (s)" yTitle="Speed (km/h)" height={Math.round(height * 0.58)} lines={[{ name: "speed", colour: sel.colour, data: t.map((p) => ({ x: p.t, y: p.speed })) }]} />
+      <TelemetryChart xLabel="s" xTitle="Time (s)" yTitle="Pedal (%)" height={Math.round(height * 0.42)} yDomain={[0, 100]} lines={[
         { name: "throttle", colour: "#22c55e", data: t.map((p) => ({ x: p.t, y: p.throttle })) },
         { name: "brake", colour: "#ef4444", data: t.map((p) => ({ x: p.t, y: p.brake })) },
       ]} />

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { BattlePanel } from "./BattlePanel";
 import { LapCompare } from "./LapCompare";
-import { GapChart, PitStops, TyreDeg } from "./RaceBoard";
+import { AeroChart, GapChart, PitStops, TyreDeg } from "./RaceBoard";
 import { CanvasFrame, CanvasToolbar, DashCanvas, useCanvasLayout, type DashBox } from "./DashCanvas";
 import { TimingLegend } from "./Legend";
 import { DriverTelemetry, FeedTrack, LiveControls, RaceControlList, RadioList, RunningOrder, Tower } from "./LivePanels";
@@ -29,10 +29,11 @@ const DEFAULT: DashBox[] = [
   { id: "gaps", x: 0, y: 2160, w: 1080, h: 380, z: 1 },
   { id: "tyredeg", x: 0, y: 2550, w: 540, h: 420, z: 1 },
   { id: "pits", x: 550, y: 2550, w: 530, h: 420, z: 1 },
+  { id: "aero", x: 0, y: 2980, w: 640, h: 460, z: 1 },
 ];
 const SIZES: Record<string, [number, number]> = {
   status: [300, 190], map: [480, 420], order: [280, 420], tower: [720, 520], telemetry: [540, 330], control: [530, 330],
-  battle: [540, 320], radio: [530, 320], strategy: [720, 420], weather: [540, 420], compare: [640, 620], gaps: [1080, 380], tyredeg: [540, 420], pits: [530, 420],
+  battle: [540, 320], radio: [530, 320], strategy: [720, 420], weather: [540, 420], compare: [640, 620], gaps: [1080, 380], tyredeg: [540, 420], pits: [530, 420], aero: [640, 460],
 };
 
 function Status({ f }: { f: LiveFeed }) {
@@ -103,6 +104,7 @@ export function TelemetryDashboard({ f, sessions }: { f: LiveFeed; sessions: Ses
     },
     gaps: { title: "Gap to leader", minW: 360, minH: 260, render: (b: DashBox) => <GapChart f={f} height={b.h - BODY - 70} /> },
     tyredeg: { title: "Tyre wear (current stint)", minW: 320, minH: 220, render: () => <TyreDeg f={f} /> },
+    aero: { title: "Aero: drag vs downforce", minW: 340, minH: 280, render: (b: DashBox) => <AeroChart f={f} height={b.h - BODY - 60} /> },
     pits: { title: "Pit stops", minW: 300, minH: 200, render: () => <PitStops f={f} /> },
     compare: { title: "Lap compare (telemetry)", minW: 380, minH: 300, render: () => <LapCompare f={f} /> },
     weather: { title: "Weather map (satellite & radar)", minW: 300, minH: 260, render: (b: DashBox) => <WeatherMap f={f} height={b.h - BODY - 40} /> },

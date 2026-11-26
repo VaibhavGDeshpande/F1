@@ -17,6 +17,7 @@ import { TyreLegend } from "./Legend";
 import { StintChart } from "./StintChart";
 import { TrackMap } from "./TrackMap";
 import { tooltip, Traces } from "./LapTraces";
+import { xTitle, yTitle } from "./Charts";
 
 export type PWDriver = { n: number; code: string; name: string; team: string; colour: string; headshot: string | null; laps: { lap: number; time: number; out?: boolean }[] };
 type Mode = "focus" | "overlay";
@@ -517,8 +518,8 @@ const LapTimes = memo(function LapTimes({ series, hideOutliers, onPick }: {
     <ResponsiveContainer width="100%" height={240}>
       <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
         <CartesianGrid stroke="#1d1d1f" vertical={false} />
-        <XAxis dataKey="lap" stroke="#555" fontSize={10} />
-        <YAxis width={56} stroke="#555" fontSize={10} domain={["dataMin - 0.3", "dataMax + 0.3"]} tickFormatter={fmtLap} />
+        <XAxis dataKey="lap" stroke="#555" fontSize={10} height={32} label={xTitle("Lap")} />
+        <YAxis width={70} stroke="#555" fontSize={10} domain={["dataMin - 0.3", "dataMax + 0.3"]} tickFormatter={fmtLap} label={yTitle("Lap time")} />
         <Tooltip {...tooltip} labelFormatter={(l) => `Lap ${l}`} formatter={(v) => fmtLap(Number(v))} />
         {series.map((s) => (
           <Line key={s.code} dataKey={s.code} stroke={s.colour} strokeWidth={1.5} connectNulls isAnimationActive={false}

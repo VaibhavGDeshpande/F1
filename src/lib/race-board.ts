@@ -18,6 +18,26 @@ export function gapsToLeader(laps: Lap[], t = Infinity): { lap: number; gaps: Re
   });
 }
 
+export type AeroRow = { driver_number: number; top: number; i1: number | null; i2: number | null; best: number };
+
+/**
+ * Drag vs downforce per driver: fastest speed-trap reading (low drag) against best lap (downforce + everything else).
+ * Out-laps and lap 1 are skipped; drivers without both numbers are left out.
+ */
+export function aeroEfficiency(laps: Lap[]): AeroRow[] {
+  const by = new Map<number, AeroRow>();
+  for (const l of laps) {
+    if (l.is_pit_out_lap || l.lap_number <= 1 || !l.lap_duration) continue;
+    const r = by.get(l.driver_number) ?? { driver_number: l.driver_number, top: 0, i1: null, i2: null, best: Infinity };
+    r.top = Math.max(r.top, l.st_speed ?? 0);
+    if (l.i1_speed) r.i1 = Math.max(r.i1 ?? 0, l.i1_speed);
+    if (l.i2_speed) r.i2 = Math.max(r.i2 ?? 0, l.i2_speed);
+    r.best = Math.min(r.best, l.lap_duration);
+    by.set(l.driver_number, r);
+  }
+  return [...by.values()].filter((r) => r.top > 0 && Number.isFinite(r.best));
+}
+
 export type PitRow = { driver_number: number; lap: number; lane: number | null; stop: number | null; off: string | null; on: string | null; date: string };
 
 /** Pit stops made by t, newest first; the k-th stop of a driver sits between his k-th and (k+1)-th stint. */

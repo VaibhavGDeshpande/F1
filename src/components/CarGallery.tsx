@@ -41,6 +41,7 @@ export function CarGallery({ teams, year, initial }: { teams: GalleryTeam[]; yea
           <div className="flex flex-wrap items-center gap-3 px-4 pt-4">
             <Img src={teamLogo(team.name, 64)} alt="" className="h-7 w-auto" />
             <span className="font-display text-3xl font-bold uppercase">{team.name}</span>
+            <a href={`/cars/${team.slug}`} className="pill ml-auto">Specs &amp; upgrades →</a>
             {team.modelYear && team.modelYear !== year && (
               <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs text-amber-300">No {year} model yet: showing the {team.modelYear} car</span>
             )}

@@ -179,7 +179,7 @@ export function RaceSim({ defaults, meetings, meetingKey, title }: {
               Softer tyres start faster but wear quicker. Where two curves cross, the harder tyre becomes the faster one: that crossing is roughly when a team wants to stop.
             </Learn>
             <p className="muted mb-2 text-xs">How much slower each compound is than a new soft as it wears. The steep bend at the end is the cliff, after the usable life.</p>
-            <TelemetryChart xLabel="laps old" unit="s" height={200} lines={curves} />
+            <TelemetryChart xLabel="laps old" xTitle="Tyre age (laps)" yTitle="Slower than new soft (s)" unit="s" height={220} lines={curves} />
           </section>
 
           <section className="card text-xs leading-relaxed text-neutral-400">

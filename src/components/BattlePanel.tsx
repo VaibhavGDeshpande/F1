@@ -79,7 +79,7 @@ export function BattlePanel({ sessionKey, t, tower, bare = false }: { sessionKey
               </span>
             )}
           </p>
-          <TelemetryChart xLabel="lap" unit="s" height={150} lines={[{ name: "gap", colour: b.colour, data: gaps.map((g) => ({ x: g.lap, y: g.gap })) }]} />
+          <TelemetryChart xLabel="lap" xTitle="Lap" yTitle="Gap (s)" unit="s" height={170} lines={[{ name: "gap", colour: b.colour, data: gaps.map((g) => ({ x: g.lap, y: g.gap })) }]} />
           <p className="muted text-[11px]">Seconds {b.acronym} crossed the line after {a.acronym} at the end of each lap (below 0 = {b.acronym} ahead). A toast fires when the gap drops under 1 s.</p>
         </>
       ) : <p className="muted text-sm">Waiting for both drivers to complete a lap…</p>}

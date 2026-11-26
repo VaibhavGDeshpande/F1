@@ -30,6 +30,7 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
           <Img src={teamLogo(info.name, 96)} alt={`${info.name} logo`} className="mb-3 h-12 w-auto" />
           <h1 className="font-display text-6xl font-bold uppercase leading-none">{info.name}</h1>
           <div className="mt-2 text-sm text-neutral-300">{info.nationality}</div>
+          {teamSlug(info.name) && <a href={`/cars/${teamSlug(info.name)}`} className="pill mt-3 inline-block">Car specs &amp; upgrades →</a>}
           <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5">
             <Stat label="Position" value={st ? `P${st.positionText}` : "–"} />
             <Stat label="Points" value={st?.points ?? "–"} />

@@ -74,6 +74,22 @@ export async function driverResults(driverId: string, season = "current"): Promi
   return d.RaceTable.Races;
 }
 
+type QualiRace = { round: string; raceName: string; QualifyingResults: { Constructor: JConstructor; Q1?: string; Q2?: string; Q3?: string }[] };
+
+/** Every qualifying result of a season (Jolpica pages at 100 rows and can split one race across two pages). */
+export async function seasonQualifying(season = "current"): Promise<QualiRace[]> {
+  const byRound = new Map<string, QualiRace>();
+  for (let offset = 0, total = 1; offset < total; offset += 100) {
+    const d = await jolpica(`${season}/qualifying/?limit=100&offset=${offset}`, 3600);
+    total = Number(d.total);
+    for (const r of d.RaceTable.Races as QualiRace[]) {
+      const had = byRound.get(r.round);
+      if (had) had.QualifyingResults.push(...r.QualifyingResults); else byRound.set(r.round, r);
+    }
+  }
+  return [...byRound.values()];
+}
+
 export async function constructorResults(constructorId: string, season = "current"): Promise<Race[]> {
   const d = await jolpica(`${season}/constructors/${constructorId}/results/?limit=100`);
   return d.RaceTable.Races;
